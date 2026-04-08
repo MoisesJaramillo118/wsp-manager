@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment & secrets
+.env
+*.env.local
+
+# Database
+*.db
+*.sqlite3
+data/
+
+# Uploads (user content)
+uploads/*
+!uploads/.gitkeep
+
+# Build output
+dist/
+build/
+staticfiles/
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Express legacy backend (not part of new stack)
+backend/
+
+# Python
+*.egg-info/
+.eggs/
+venv/
+env/
+
+# OS
+Thumbs.db
