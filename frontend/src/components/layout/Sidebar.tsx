@@ -133,6 +133,7 @@ export const Sidebar: React.FC = () => {
   const activeSection = useUiStore((s) => s.activeSection);
   const showSection = useUiStore((s) => s.showSection);
   const sidebarOpen = useUiStore((s) => s.sidebarOpen);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
@@ -143,15 +144,36 @@ export const Sidebar: React.FC = () => {
   const initial = user?.nombre ? user.nombre.charAt(0).toUpperCase() : '?';
 
   return (
-    <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`} id="sidebar">
-      <div style={{ padding: '16px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <h1 style={{ fontSize: 18, fontWeight: 600, color: '#fff', letterSpacing: '-0.3px', margin: 0 }}>
-          Clemencia
-        </h1>
-        <p style={{ fontSize: 11, color: 'rgba(249,168,212,0.7)', marginTop: 2 }}>
-          Brand &middot; WhatsApp Manager
-        </p>
-
+    <>
+    <aside className="sidebar" id="sidebar" style={{ transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)' }}>
+      <div style={{ padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+        {/* Title row + close button */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div>
+            <h1 style={{ fontSize: 18, fontWeight: 600, color: '#fff', letterSpacing: '-0.3px', margin: 0 }}>
+              Clemencia
+            </h1>
+            <p style={{ fontSize: 11, color: 'rgba(249,168,212,0.7)', marginTop: 2 }}>
+              Brand &middot; WhatsApp Manager
+            </p>
+          </div>
+          <button
+            onClick={toggleSidebar}
+            title="Ocultar menu"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+              color: 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center',
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+            onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.4)')}
+          >
+            <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+        {/* User info */}
         {user && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, paddingTop: 12,
@@ -215,5 +237,6 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
     </aside>
+    </>
   );
 };

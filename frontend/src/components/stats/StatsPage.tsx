@@ -25,7 +25,6 @@ export const StatsPage: React.FC = () => {
 
   const [totalConv, setTotalConv] = useState(0);
   const [totalVentas, setTotalVentas] = useState(0);
-  const [totalPerdidas, setTotalPerdidas] = useState(0);
   const [tasaConv, setTasaConv] = useState('0%');
   const [advisorPerf, setAdvisorPerf] = useState<AdvisorPerformance[]>([]);
   const [weekly, setWeekly] = useState<WeeklyChartDay[]>([]);
@@ -45,9 +44,7 @@ export const StatsPage: React.FC = () => {
       setTotalConv(dashboard.total_conversaciones || 0);
       const ventas = dashboard.ventas_cerradas || 0;
       setTotalVentas(ventas);
-      const perdidas = dashboard.ventas_perdidas || 0;
-      setTotalPerdidas(perdidas);
-      const total = ventas + perdidas;
+      const total = ventas;
       setTasaConv(total > 0 ? `${Math.round((ventas / total) * 100)}%` : '0%');
       setWeekly(weeklyData);
 
@@ -112,10 +109,6 @@ export const StatsPage: React.FC = () => {
           <div className="stat-label">Ventas cerradas</div>
         </div>
         <div className="stat-card">
-          <div className="stat-num">{totalPerdidas}</div>
-          <div className="stat-label">Ventas perdidas</div>
-        </div>
-        <div className="stat-card">
           <div className="stat-num">{tasaConv}</div>
           <div className="stat-label">Tasa de conversion</div>
         </div>
@@ -134,7 +127,6 @@ export const StatsPage: React.FC = () => {
                   <th>Especialidad</th>
                   <th>Chats activos</th>
                   <th>Ventas</th>
-                  <th>Perdidas</th>
                   <th>Tasa %</th>
                   <th>Tiempo resp.</th>
                 </tr>
@@ -159,7 +151,6 @@ export const StatsPage: React.FC = () => {
                     <td>{a.especialidad || '-'}</td>
                     <td>{a.chats_activos}</td>
                     <td className="text-green-600 font-medium">{a.ventas_cerradas}</td>
-                    <td className="text-red-500">{a.ventas_perdidas}</td>
                     <td>
                       <span className="badge badge-mint text-[10px]">{tasa}%</span>
                     </td>

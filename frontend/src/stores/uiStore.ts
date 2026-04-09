@@ -21,14 +21,14 @@ interface UiState {
 
 export const useUiStore = create<UiState>((set, get) => ({
   activeSection: 'dashboard',
-  sidebarOpen: false,
+  sidebarOpen: window.innerWidth >= 768,
   loadingCount: 0,
   dirtyModals: new Set<string>(),
   connectionStatus: 'disconnected' as const,
 
-  showSection: (name: string) => set({ activeSection: name, sidebarOpen: false }),
+  showSection: (name: string) => set({ activeSection: name, sidebarOpen: window.innerWidth >= 768 }),
 
-  setActiveSection: (name: string) => set({ activeSection: name, sidebarOpen: false }),
+  setActiveSection: (name: string) => set({ activeSection: name, sidebarOpen: window.innerWidth >= 768 }),
 
   setConnectionStatus: (status: 'connected' | 'disconnected' | 'connecting') =>
     set({ connectionStatus: status }),

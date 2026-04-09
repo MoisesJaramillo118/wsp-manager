@@ -174,10 +174,6 @@ export const AdvisorsPage: React.FC = () => {
                   <div className="font-semibold text-sm text-green-600">{stats.ventas}</div>
                   <div className="text-[10px] text-slate-400">Ventas</div>
                 </div>
-                <div className="text-center p-2 bg-slate-50 rounded-lg">
-                  <div className="font-semibold text-sm text-red-500">{stats.perdidas}</div>
-                  <div className="text-[10px] text-slate-400">Perdidas</div>
-                </div>
               </div>
 
               {/* Capacity bar */}

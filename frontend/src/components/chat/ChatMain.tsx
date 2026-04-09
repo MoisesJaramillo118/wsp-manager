@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import type { ChatMessage, Conversation, Advisor } from '../../types';
 import { chatService } from '../../services/chatService';
+import api from '../../config/api';
 import { useAuthStore } from '../../stores/authStore';
 import { ChatBubble } from './ChatBubble';
 import { ChatInput } from './ChatInput';
@@ -25,13 +26,20 @@ const STATUS_COLORS: Record<string, string> = {
 const OUTCOME_LABELS: Record<string, string> = {
   pendiente: 'Pendiente',
   venta_cerrada: 'Venta cerrada',
-  venta_perdida: 'Venta perdida',
 };
 
 const OUTCOME_COLORS: Record<string, string> = {
   pendiente: 'badge-gray',
   venta_cerrada: 'badge-green',
-  venta_perdida: 'badge-red',
+};
+
+const ORIGEN_LABELS: Record<string, string> = {
+  directo: 'WhatsApp Directo',
+  instagram: 'Instagram',
+  facebook_ads: 'Facebook Ads',
+  tiktok: 'TikTok',
+  referido: 'Referido',
+  tienda: 'Tienda Fisica',
 };
 
 interface ChatMainProps {
@@ -64,6 +72,7 @@ export const ChatMain: React.FC<ChatMainProps> = ({
   const [conversation, setConversation] = useState<(Conversation & { outcome?: string }) | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [typing, setTyping] = useState(false);
+  const [origen, setOrigen] = useState<string | null>(null);
   const messagesRef = useRef<HTMLDivElement>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastMsgCountRef = useRef(0);
@@ -89,6 +98,14 @@ export const ChatMain: React.FC<ChatMainProps> = ({
         setSuggestions(sugs);
       } else {
         setSuggestions([]);
+      }
+
+      // Load origen
+      try {
+        const origenRes = await api.get(`/conversacion/${chatPhone}/origen`);
+        setOrigen(origenRes.data?.origen || null);
+      } catch {
+        setOrigen(null);
       }
     } catch (e: any) {
       toast('Error: ' + (e.message || 'Error cargando chat'), false);
@@ -132,6 +149,7 @@ export const ChatMain: React.FC<ChatMainProps> = ({
       setMessages([]);
       setConversation(null);
       setSuggestions([]);
+      setOrigen(null);
       return;
     }
     loadChat(phone);
@@ -296,6 +314,11 @@ export const ChatMain: React.FC<ChatMainProps> = ({
                   {OUTCOME_LABELS[outcome] || outcome}
                 </span>
               )}
+              {origen && (
+                <span className="badge text-[10px] badge-pink">
+                  {ORIGEN_LABELS[origen] || origen}
+                </span>
+              )}
             </div>
           </div>
           <div className="flex gap-1 shrink-0 items-center">
@@ -355,7 +378,6 @@ export const ChatMain: React.FC<ChatMainProps> = ({
               >
                 <option value="pendiente">Pendiente</option>
                 <option value="venta_cerrada">Venta cerrada</option>
-                <option value="venta_perdida">Venta perdida</option>
               </select>
             </>
           )}

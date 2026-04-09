@@ -74,12 +74,13 @@ export const TagsModal: React.FC<Props> = ({ isOpen, onClose, conversationPhone 
   return (
     <Modal open={isOpen} onClose={onClose} title="Gestionar etiquetas" maxWidth="400px">
       {/* New tag form */}
-      <div className="flex gap-2 mb-3">
+      <div className="flex gap-2 mb-3 items-center">
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
           placeholder="Nueva etiqueta..."
-          className="text-xs flex-1"
+          className="text-xs"
+          style={{ flex: 1, width: 'auto', minWidth: 0 }}
           autoComplete="off"
           onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
         />
@@ -87,10 +88,9 @@ export const TagsModal: React.FC<Props> = ({ isOpen, onClose, conversationPhone 
           type="color"
           value={newColor}
           onChange={(e) => setNewColor(e.target.value)}
-          className="w-8 h-8 rounded cursor-pointer border-0 p-0"
-          style={{ border: 'none', padding: 0 }}
+          style={{ width: 32, height: 32, border: 'none', padding: 0, borderRadius: 6, cursor: 'pointer', flexShrink: 0 }}
         />
-        <button className="btn btn-pr btn-sm text-xs" onClick={handleCreate}>
+        <button className="btn btn-pr btn-sm text-xs" style={{ flexShrink: 0 }} onClick={handleCreate}>
           +
         </button>
       </div>

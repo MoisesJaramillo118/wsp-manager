@@ -46,8 +46,7 @@ body{font-family:'Poppins',sans-serif;background:#fdf8fa;color:#3a2830}
 .sidebar .nav-item:hover{opacity:1;background:rgba(255,255,255,.08)}
 .sidebar .nav-item.active{color:#fff;opacity:1;background:rgba(244,114,182,.15);border-left-color:#f472b6;font-weight:500}
 
-/* Main */
-.main{margin-left:220px;padding:20px 28px;min-height:100vh}
+/* Main - margin now controlled inline via React state */
 
 /* Cards, Buttons, Badges */
 .card{background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(0,0,0,.04);border:1px solid #e4e7ec}
@@ -68,6 +67,8 @@ body{font-family:'Poppins',sans-serif;background:#fdf8fa;color:#3a2830}
 
 /* Form inputs */
 input,textarea,select{border:1.5px solid #e4e7ec;border-radius:8px;padding:9px 12px;font-size:13px;width:100%;font-family:inherit;transition:border-color .2s;background:#fff;color:#2d3748}
+.flex>input,.flex>select,.flex>textarea{width:auto;min-width:0}
+.flex>input[style*="flex"],.flex>select[style*="flex"]{width:auto}
 input:focus,textarea:focus,select:focus{outline:none;border-color:#f472b6;box-shadow:0 0 0 3px rgba(244,114,182,.12)}
 
 /* Table */
@@ -136,5 +137,5 @@ tr:hover td{background:#f8f9fb}
 .typing-indicator span:nth-child(3){animation-delay:.4s}
 @keyframes typing-bounce{0%,80%,100%{transform:scale(0)}40%{transform:scale(1)}}
 
-/* Responsive */
-@media(max-width:768px){.sidebar{transform:translateX(-100%)}.sidebar.open{transform:translateX(0)}.main{margin-left:0;padding:14px}.mobile-toggle{display:flex!important}}
+/* Responsive - sidebar toggle is now controlled by React state at all sizes */
+@media(max-width:768px){.sidebar{transform:translateX(-100%)}}

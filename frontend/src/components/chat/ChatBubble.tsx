@@ -14,12 +14,12 @@ interface ChatBubbleProps {
 export const ChatBubble: React.FC<ChatBubbleProps> = ({ message }) => {
   if (message.entry_type === 'note') {
     return (
-      <div className="mx-auto my-1 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg max-w-[80%] text-center">
-        <span className="text-[10px] text-amber-700 font-medium">Nota interna</span>
-        <span className="text-[10px] text-amber-500 ml-2">
+      <div className="my-1 px-3 py-1.5 rounded-lg max-w-[80%] text-center" style={{ alignSelf: 'center', margin: '4px auto', background: '#fffbeb', border: '1px solid #fde68a' }}>
+        <span style={{ fontSize: 10, color: '#b45309', fontWeight: 500 }}>Nota interna</span>
+        <span style={{ fontSize: 10, color: '#d97706', marginLeft: 8 }}>
           {(message as any).advisor_nombre || ''} &middot; {fmtTime(message.created_at)}
         </span>
-        <p className="text-[11px] text-amber-800 mt-0.5">{(message as any).note || message.message}</p>
+        <p style={{ fontSize: 11, color: '#92400e', marginTop: 2 }}>{(message as any).note || message.message}</p>
       </div>
     );
   }

@@ -12,12 +12,12 @@ interface Props {
 }
 
 const ORIGENES = [
-  { value: 'directo', emoji: '\uD83D\uDCAC', label: 'WhatsApp directo' },
-  { value: 'instagram', emoji: '\uD83D\uDCF8', label: 'Instagram' },
-  { value: 'facebook_ads', emoji: '\uD83D\uDCE2', label: 'Facebook Ads' },
-  { value: 'tiktok', emoji: '\uD83C\uDFB5', label: 'TikTok' },
-  { value: 'referido', emoji: '\uD83D\uDC65', label: 'Referido' },
-  { value: 'tienda', emoji: '\uD83C\uDFEA', label: 'Tienda fisica' },
+  { value: 'directo', label: 'WhatsApp Directo' },
+  { value: 'instagram', label: 'Instagram' },
+  { value: 'facebook_ads', label: 'Facebook Ads' },
+  { value: 'tiktok', label: 'TikTok' },
+  { value: 'referido', label: 'Referido' },
+  { value: 'tienda', label: 'Tienda Fisica' },
 ];
 
 export const OrigenModal: React.FC<Props> = ({ isOpen, onClose, remotePhone, currentOrigen, onSaved }) => {
@@ -51,8 +51,7 @@ export const OrigenModal: React.FC<Props> = ({ isOpen, onClose, remotePhone, cur
               }}
               onClick={() => handleSelect(o.value)}
             >
-              <div className="text-lg mb-1">{o.emoji}</div>
-              <div className="text-[11px]">{o.label}</div>
+              <div className="text-xs font-medium">{o.label}</div>
             </button>
           ))}
         </div>

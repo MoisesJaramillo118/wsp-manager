@@ -88,7 +88,14 @@ def _process_webhook(body):
                 or {}
             ).lower()
 
-            if 'instagram' in ctx or 'vi en instagram' in lower or 'los vi en ig' in lower or 'instagram' in lower:
+            # Meta Ads Click-to-WhatsApp detection (highest priority)
+            if 'ctwa_clid' in ctx or 'fbclid' in ctx:
+                # Check if it came from Instagram or Facebook specifically
+                if 'instagram' in ctx:
+                    origen = 'instagram'
+                else:
+                    origen = 'facebook_ads'
+            elif 'instagram' in ctx or 'vi en instagram' in lower or 'los vi en ig' in lower or 'instagram' in lower:
                 origen = 'instagram'
             elif 'facebook' in ctx or 'vi en facebook' in lower or 'fb' in lower or 'anuncio' in lower or 'publicidad' in lower:
                 origen = 'facebook_ads'
