@@ -243,6 +243,108 @@ class ConversionDiariaView(APIView):
         return Response(results)
 
 
+class AdminKPIView(APIView):
+    """Admin-level KPI dashboard: sales per advisor with amounts + conversion funnel."""
+    def get(self, request):
+        with connection.cursor() as c:
+            # 1. Sales per advisor with amounts by period
+            c.execute("""
+                SELECT
+                    a.id,
+                    a.nombre,
+                    a.color,
+                    a.especialidad,
+                    a.local_tienda,
+                    a.en_turno,
+                    -- Ventas totales (todas)
+                    COALESCE((SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id), 0) as ventas_total,
+                    COALESCE((SELECT SUM(monto) FROM ventas_cerradas v WHERE v.advisor_id = a.id), 0) as monto_total,
+                    -- Ventas hoy
+                    COALESCE((SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND date(v.created_at) = date('now')), 0) as ventas_hoy,
+                    COALESCE((SELECT SUM(monto) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND date(v.created_at) = date('now')), 0) as monto_hoy,
+                    -- Ventas esta semana
+                    COALESCE((SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND date(v.created_at) >= date('now', '-7 days')), 0) as ventas_semana,
+                    COALESCE((SELECT SUM(monto) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND date(v.created_at) >= date('now', '-7 days')), 0) as monto_semana,
+                    -- Ventas este mes
+                    COALESCE((SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND strftime('%Y-%m', v.created_at) = strftime('%Y-%m', 'now')), 0) as ventas_mes,
+                    COALESCE((SELECT SUM(monto) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND strftime('%Y-%m', v.created_at) = strftime('%Y-%m', 'now')), 0) as monto_mes,
+                    -- Conversaciones asignadas
+                    COALESCE((SELECT COUNT(*) FROM conversations c WHERE c.advisor_id = a.id), 0) as total_atendidos,
+                    COALESCE((SELECT COUNT(*) FROM conversations c WHERE c.advisor_id = a.id AND c.status = 'asignado'), 0) as chats_activos
+                FROM advisors a
+                WHERE a.activo = 1
+                ORDER BY monto_total DESC
+            """)
+            advisors_kpi = _dictfetchall(c)
+
+            # Calculate tasa_conversion per advisor
+            for a in advisors_kpi:
+                total = a['total_atendidos'] or 0
+                ventas = a['ventas_total'] or 0
+                a['tasa_conversion'] = round((ventas / total) * 100, 2) if total > 0 else 0
+
+            # 2. Conversion funnel (chats -> assigned -> sales)
+            c.execute("SELECT COUNT(DISTINCT remote_phone) FROM chats WHERE direction = 'incoming'")
+            chats_recibidos = c.fetchone()[0] or 0
+
+            c.execute("SELECT COUNT(*) FROM conversations WHERE advisor_id IS NOT NULL")
+            chats_asignados = c.fetchone()[0] or 0
+
+            c.execute("SELECT COUNT(*) FROM ventas_cerradas")
+            ventas_cerradas = c.fetchone()[0] or 0
+
+            c.execute("SELECT COALESCE(SUM(monto), 0) FROM ventas_cerradas")
+            monto_total = float(c.fetchone()[0] or 0)
+
+            # Today's funnel
+            c.execute("SELECT COUNT(DISTINCT remote_phone) FROM chats WHERE direction = 'incoming' AND date(created_at) = date('now')")
+            chats_hoy = c.fetchone()[0] or 0
+
+            c.execute("SELECT COUNT(*) FROM ventas_cerradas WHERE date(created_at) = date('now')")
+            ventas_hoy = c.fetchone()[0] or 0
+
+            c.execute("SELECT COALESCE(SUM(monto), 0) FROM ventas_cerradas WHERE date(created_at) = date('now')")
+            monto_hoy = float(c.fetchone()[0] or 0)
+
+            # This month funnel
+            c.execute("SELECT COUNT(DISTINCT remote_phone) FROM chats WHERE direction = 'incoming' AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')")
+            chats_mes = c.fetchone()[0] or 0
+
+            c.execute("SELECT COUNT(*) FROM ventas_cerradas WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')")
+            ventas_mes = c.fetchone()[0] or 0
+
+            c.execute("SELECT COALESCE(SUM(monto), 0) FROM ventas_cerradas WHERE strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')")
+            monto_mes = float(c.fetchone()[0] or 0)
+
+        funnel_total = {
+            'chats_recibidos': chats_recibidos,
+            'chats_asignados': chats_asignados,
+            'ventas_cerradas': ventas_cerradas,
+            'monto_total': monto_total,
+            'tasa_asignacion': round((chats_asignados / chats_recibidos) * 100, 2) if chats_recibidos > 0 else 0,
+            'tasa_cierre': round((ventas_cerradas / chats_recibidos) * 100, 2) if chats_recibidos > 0 else 0,
+        }
+        funnel_hoy = {
+            'chats': chats_hoy,
+            'ventas': ventas_hoy,
+            'monto': monto_hoy,
+            'tasa': round((ventas_hoy / chats_hoy) * 100, 2) if chats_hoy > 0 else 0,
+        }
+        funnel_mes = {
+            'chats': chats_mes,
+            'ventas': ventas_mes,
+            'monto': monto_mes,
+            'tasa': round((ventas_mes / chats_mes) * 100, 2) if chats_mes > 0 else 0,
+        }
+
+        return Response({
+            'advisors': advisors_kpi,
+            'funnel_total': funnel_total,
+            'funnel_hoy': funnel_hoy,
+            'funnel_mes': funnel_mes,
+        })
+
+
 class WeeklyChart(APIView):
     def get(self, request):
         data = []

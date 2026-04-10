@@ -48,6 +48,49 @@ export interface ConversionDay {
   tasa: number;
 }
 
+export interface AdvisorKPI {
+  id: number;
+  nombre: string;
+  color: string;
+  especialidad: string;
+  local_tienda: string;
+  en_turno: boolean;
+  ventas_total: number;
+  monto_total: number;
+  ventas_hoy: number;
+  monto_hoy: number;
+  ventas_semana: number;
+  monto_semana: number;
+  ventas_mes: number;
+  monto_mes: number;
+  total_atendidos: number;
+  chats_activos: number;
+  tasa_conversion: number;
+}
+
+export interface FunnelPeriod {
+  chats: number;
+  ventas: number;
+  monto: number;
+  tasa: number;
+}
+
+export interface FunnelTotal {
+  chats_recibidos: number;
+  chats_asignados: number;
+  ventas_cerradas: number;
+  monto_total: number;
+  tasa_asignacion: number;
+  tasa_cierre: number;
+}
+
+export interface AdminKPIData {
+  advisors: AdvisorKPI[];
+  funnel_total: FunnelTotal;
+  funnel_hoy: FunnelPeriod;
+  funnel_mes: FunnelPeriod;
+}
+
 export const dashboardService = {
   async getStats(): Promise<DashboardData> {
     const { data } = await api.get('/dashboard/stats');
@@ -71,4 +114,9 @@ export const dashboardService = {
 
   conversionDiaria: () =>
     api.get<ConversionDay[]>('/dashboard/conversion-diaria').then((r) => r.data),
+
+  getAdminKPI: async (): Promise<AdminKPIData> => {
+    const { data } = await api.get('/dashboard/admin-kpi');
+    return data;
+  },
 };

@@ -10,4 +10,6 @@ urlpatterns = [
     path('dashboard/weekly-chart', views.WeeklyChart.as_view()),
     path('dashboard/conversion-diaria', views.ConversionDiariaView.as_view()),
     path('dashboard/conversion-diaria/', views.ConversionDiariaView.as_view()),
+    path('dashboard/admin-kpi', views.AdminKPIView.as_view()),
+    path('dashboard/admin-kpi/', views.AdminKPIView.as_view()),
 ]

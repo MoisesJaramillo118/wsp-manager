@@ -311,6 +311,83 @@ class VentaStats(APIView):
         })
 
 
+class VentasPorAsesorView(APIView):
+    """
+    Detailed sales metrics per advisor for admin dashboard.
+    GET /api/ventas-cerradas/por-asesor
+    Query params: fecha_desde, fecha_hasta (optional ISO dates)
+    """
+    def get(self, request):
+        fecha_desde = request.query_params.get('fecha_desde')
+        fecha_hasta = request.query_params.get('fecha_hasta')
+
+        # Build date filter for ventas (used in the rango sub-selects)
+        date_filter = ""
+        range_params = []
+        if fecha_desde and fecha_hasta:
+            date_filter = " AND date(v.created_at) BETWEEN %s AND %s"
+            range_params = [fecha_desde, fecha_hasta]
+        elif fecha_desde:
+            date_filter = " AND date(v.created_at) >= %s"
+            range_params = [fecha_desde]
+        elif fecha_hasta:
+            date_filter = " AND date(v.created_at) <= %s"
+            range_params = [fecha_hasta]
+
+        sql = f"""
+            SELECT
+                a.id, a.nombre, a.color, a.especialidad, a.local_tienda, a.en_turno,
+                (SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id) as total_ventas,
+                (SELECT COALESCE(SUM(monto), 0) FROM ventas_cerradas v WHERE v.advisor_id = a.id) as total_monto,
+                (SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND date(v.created_at) = date('now')) as ventas_hoy,
+                (SELECT COALESCE(SUM(monto), 0) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND date(v.created_at) = date('now')) as monto_hoy,
+                (SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND date(v.created_at) >= date('now','-7 days')) as ventas_semana,
+                (SELECT COALESCE(SUM(monto), 0) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND date(v.created_at) >= date('now','-7 days')) as monto_semana,
+                (SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND strftime('%%Y-%%m', v.created_at) = strftime('%%Y-%%m','now')) as ventas_mes,
+                (SELECT COALESCE(SUM(monto), 0) FROM ventas_cerradas v WHERE v.advisor_id = a.id AND strftime('%%Y-%%m', v.created_at) = strftime('%%Y-%%m','now')) as monto_mes,
+                (SELECT COUNT(*) FROM ventas_cerradas v WHERE v.advisor_id = a.id{date_filter}) as ventas_rango,
+                (SELECT COALESCE(SUM(monto), 0) FROM ventas_cerradas v WHERE v.advisor_id = a.id{date_filter}) as monto_rango,
+                (SELECT COUNT(*) FROM conversations c WHERE c.advisor_id = a.id) as total_chats_atendidos,
+                (SELECT COUNT(*) FROM conversations c WHERE c.advisor_id = a.id AND c.status = 'asignado') as chats_activos,
+                (SELECT COALESCE(AVG(monto), 0) FROM ventas_cerradas v WHERE v.advisor_id = a.id) as ticket_promedio
+            FROM advisors a
+            WHERE a.activo = 1
+            ORDER BY total_monto DESC
+        """
+
+        # The date_filter is used in two sub-selects (ventas_rango and monto_rango)
+        params = list(range_params) + list(range_params)
+
+        with connection.cursor() as c:
+            c.execute(sql, params)
+            cols = [d[0] for d in c.description]
+            rows = [dict(zip(cols, row)) for row in c.fetchall()]
+
+        # Calculate conversion rate and cast decimals to float for JSON serialization
+        for r in rows:
+            chats = r['total_chats_atendidos'] or 0
+            ventas = r['total_ventas'] or 0
+            r['tasa_conversion'] = round((ventas / chats) * 100, 2) if chats > 0 else 0
+            for field in ['total_monto', 'monto_hoy', 'monto_semana', 'monto_mes', 'monto_rango', 'ticket_promedio']:
+                r[field] = float(r[field] or 0)
+            r['en_turno'] = bool(r['en_turno'])
+
+        total_ventas = sum(r['total_ventas'] for r in rows)
+        total_monto = sum(r['total_monto'] for r in rows)
+        total_chats_atendidos = sum(r['total_chats_atendidos'] for r in rows)
+
+        return Response({
+            'asesores': rows,
+            'totales': {
+                'total_ventas': total_ventas,
+                'total_monto': round(total_monto, 2),
+                'total_chats_atendidos': total_chats_atendidos,
+                'tasa_conversion_global': round((total_ventas / total_chats_atendidos) * 100, 2) if total_chats_atendidos > 0 else 0,
+                'ticket_promedio_global': round(total_monto / total_ventas, 2) if total_ventas > 0 else 0,
+            }
+        })
+
+
 class VentaExport(APIView):
     def get(self, request):
         advisor_id = request.query_params.get('advisor_id')

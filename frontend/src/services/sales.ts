@@ -25,4 +25,11 @@ export const salesService = {
 
   export: (params?: { desde?: string; hasta?: string }) =>
     api.get('/ventas-cerradas/export', { params, responseType: 'blob' }),
+
+  porAsesor: (fechaDesde?: string, fechaHasta?: string) => {
+    const params: Record<string, string> = {};
+    if (fechaDesde) params.fecha_desde = fechaDesde;
+    if (fechaHasta) params.fecha_hasta = fechaHasta;
+    return api.get('/ventas-cerradas/por-asesor', { params });
+  },
 };
