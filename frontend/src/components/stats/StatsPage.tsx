@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { WeeklyChartDay } from '../../types';
-import { dashboardService } from '../../services/dashboardService';
+import { dashboardService, type ConversionDay } from '../../services/dashboardService';
 import { salesService } from '../../services/sales';
 import { toast } from '../ui/Toast';
 import { ExportButton } from '../ui/ExportButton';
@@ -26,12 +26,16 @@ export const StatsPage: React.FC = () => {
   const [totalConv, setTotalConv] = useState(0);
   const [totalVentas, setTotalVentas] = useState(0);
   const [tasaConv, setTasaConv] = useState('0%');
+  const [totalContactos, setTotalContactos] = useState(0);
+  const [tasaConvGlobal, setTasaConvGlobal] = useState('0%');
   const [advisorPerf, setAdvisorPerf] = useState<AdvisorPerformance[]>([]);
   const [weekly, setWeekly] = useState<WeeklyChartDay[]>([]);
+  const [conversionDiaria, setConversionDiaria] = useState<ConversionDay[]>([]);
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     loadStats();
+    dashboardService.conversionDiaria().then(setConversionDiaria).catch(() => {});
   }, []);
 
   const loadStats = async () => {
@@ -46,6 +50,8 @@ export const StatsPage: React.FC = () => {
       setTotalVentas(ventas);
       const total = ventas;
       setTasaConv(total > 0 ? `${Math.round((ventas / total) * 100)}%` : '0%');
+      setTotalContactos(dashboard.total_contactos || 0);
+      setTasaConvGlobal(`${dashboard.tasa_conversion_global || 0}%`);
       setWeekly(weeklyData);
 
       if (isAdmin) {
@@ -98,8 +104,8 @@ export const StatsPage: React.FC = () => {
         <ExportButton onClick={handleExport} loading={exporting} />
       </div>
 
-      {/* 4 stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 mb-5">
         <div className="stat-card">
           <div className="stat-num">{totalConv}</div>
           <div className="stat-label">Conversaciones totales</div>
@@ -111,6 +117,14 @@ export const StatsPage: React.FC = () => {
         <div className="stat-card">
           <div className="stat-num">{tasaConv}</div>
           <div className="stat-label">Tasa de conversion</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">{totalContactos}</div>
+          <div className="stat-label">Total contactos</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-num">{tasaConvGlobal}</div>
+          <div className="stat-label">Tasa conversion</div>
         </div>
       </div>
 
@@ -163,6 +177,50 @@ export const StatsPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Conversion diaria (ultimos 30 dias) */}
+      <div className="card mb-4">
+        <h3 className="font-semibold text-sm mb-3">Conversion Diaria (ultimos 30 dias)</h3>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Chats nuevos</th>
+                <th>Ventas</th>
+                <th>Tasa conversion %</th>
+              </tr>
+            </thead>
+            <tbody>
+              {conversionDiaria.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="text-center text-xs text-slate-400 py-4">
+                    Sin datos de conversion
+                  </td>
+                </tr>
+              )}
+              {conversionDiaria.map((row) => {
+                const rowStyle: React.CSSProperties = {};
+                if (row.tasa > 30) {
+                  rowStyle.background = '#dcfce7';
+                } else if (row.tasa < 10) {
+                  rowStyle.background = '#fee2e2';
+                }
+                return (
+                  <tr key={row.fecha} style={rowStyle}>
+                    <td className="font-medium">{row.fecha}</td>
+                    <td>{row.chats_nuevos}</td>
+                    <td className="text-green-600 font-medium">{row.ventas}</td>
+                    <td>
+                      <span className="badge badge-mint text-[10px]">{row.tasa}%</span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* Weekly activity chart */}
       <div className="card">

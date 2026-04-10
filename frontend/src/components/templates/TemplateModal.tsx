@@ -5,9 +5,16 @@ import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { toast } from '../ui/Toast';
 
+interface TemplatePrefill {
+  nombre?: string;
+  categoria?: string;
+  contenido?: string;
+}
+
 interface TemplateModalProps {
   open: boolean;
   template: Template | null;
+  prefill?: TemplatePrefill | null;
   onClose: () => void;
   onSaved: () => void;
 }
@@ -15,6 +22,7 @@ interface TemplateModalProps {
 export const TemplateModal: React.FC<TemplateModalProps> = ({
   open,
   template,
+  prefill,
   onClose,
   onSaved,
 }) => {
@@ -31,6 +39,10 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
         setNombre(template.nombre);
         setCategoria(template.categoria);
         setContenido(template.contenido);
+      } else if (prefill) {
+        setNombre(prefill.nombre || '');
+        setCategoria(prefill.categoria || 'promocion');
+        setContenido(prefill.contenido || '');
       } else {
         setNombre('');
         setCategoria('promocion');
@@ -38,7 +50,7 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
       }
       setDirty(false);
     }
-  }, [open, template]);
+  }, [open, template, prefill]);
 
   const handleChange = (setter: (v: string) => void) => (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -104,14 +116,10 @@ export const TemplateModal: React.FC<TemplateModalProps> = ({
           <textarea
             className="text-xs"
             rows={4}
-            placeholder="Usa {{nombre}} para personalizar..."
+            placeholder="Escribe el contenido del mensaje (sin nombres personales)"
             value={contenido}
             onChange={handleChange(setContenido)}
           />
-          <div className="text-[11px] text-slate-400 mt-1">
-            Variables: <code className="bg-slate-100 px-1 rounded">{'{{nombre}}'}</code>{' '}
-            <code className="bg-slate-100 px-1 rounded">{'{{telefono}}'}</code>
-          </div>
         </div>
       </div>
       <div className="flex gap-2 mt-5">

@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { salesService } from '../../services/sales';
+import api from '../../config/api';
 import { toast } from '../ui/Toast';
 import { Modal } from '../ui/Modal';
 import { useConfirmClose } from '../../hooks/useConfirmClose';
+import type { VentaItem } from '../../types';
 
 interface Props {
   isOpen: boolean;
@@ -12,12 +13,18 @@ interface Props {
   onSaved?: () => void;
 }
 
+const emptyItem = (): VentaItem => ({
+  descripcion: '',
+  cantidad: 1,
+  precio_unitario: 0,
+  subtotal: 0,
+});
+
 export const VentaCerradaModal: React.FC<Props> = ({ isOpen, onClose, remotePhone, remoteName: _remoteName, onSaved }) => {
-  const [monto, setMonto] = useState('');
+  const [items, setItems] = useState<VentaItem[]>([emptyItem()]);
   const [metodo, setMetodo] = useState('yape');
-  const [productos, setProductos] = useState('');
   const [notas, setNotas] = useState('');
-  const [_comprobante, setComprobante] = useState<File | null>(null);
+  const [comprobante, setComprobante] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -28,30 +35,78 @@ export const VentaCerradaModal: React.FC<Props> = ({ isOpen, onClose, remotePhon
   const markClean = () => { setDirty(false); hookMarkClean(); };
   const handleClose = () => { if (confirmClose()) onClose(); };
 
+  const total = items.reduce(
+    (sum, i) => sum + (Number(i.cantidad) || 0) * (Number(i.precio_unitario) || 0),
+    0,
+  );
+
+  const updateItem = (index: number, patch: Partial<VentaItem>) => {
+    setItems((prev) => {
+      const next = prev.map((it, i) => {
+        if (i !== index) return it;
+        const merged = { ...it, ...patch };
+        const cantidad = Number(merged.cantidad) || 0;
+        const precio = Number(merged.precio_unitario) || 0;
+        merged.subtotal = Number((cantidad * precio).toFixed(2));
+        return merged;
+      });
+      return next;
+    });
+    markDirty();
+  };
+
+  const addItem = () => {
+    setItems((prev) => [...prev, emptyItem()]);
+    markDirty();
+  };
+
+  const removeItem = (index: number) => {
+    setItems((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
+    markDirty();
+  };
+
+  const resetForm = () => {
+    setItems([emptyItem()]);
+    setMetodo('yape');
+    setNotas('');
+    setComprobante(null);
+    if (fileRef.current) fileRef.current.value = '';
+  };
+
   const handleSave = async () => {
-    if (!monto || Number(monto) <= 0) {
-      toast('Ingresa un monto valido', false);
+    const validItems = items.filter(
+      (i) => i.descripcion.trim() !== '' && Number(i.cantidad) > 0 && Number(i.precio_unitario) >= 0,
+    );
+
+    if (validItems.length === 0) {
+      toast('Agrega al menos un producto valido', false);
+      return;
+    }
+
+    if (total <= 0) {
+      toast('El monto total debe ser mayor a 0', false);
       return;
     }
 
     setSaving(true);
     try {
-      await salesService.create({
-        remote_phone: remotePhone,
-        advisor_id: 0, // Will be set by backend from auth token
-        monto: Number(monto),
-        metodo_pago: metodo,
-        productos_descripcion: productos,
-        notas,
+      const formData = new FormData();
+      formData.append('remote_phone', remotePhone);
+      formData.append('advisor_id', '0');
+      formData.append('items', JSON.stringify(validItems));
+      formData.append('monto', total.toString());
+      formData.append('metodo_pago', metodo);
+      formData.append('notas', notas);
+      if (comprobante) {
+        formData.append('comprobante', comprobante);
+      }
+
+      await api.post('/ventas-cerradas', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
+
       toast('Venta registrada');
-      // Reset form
-      setMonto('');
-      setMetodo('yape');
-      setProductos('');
-      setNotas('');
-      setComprobante(null);
-      if (fileRef.current) fileRef.current.value = '';
+      resetForm();
       markClean();
       onSaved?.();
       onClose();
@@ -63,18 +118,99 @@ export const VentaCerradaModal: React.FC<Props> = ({ isOpen, onClose, remotePhon
   };
 
   return (
-    <Modal open={isOpen} onClose={handleClose} dirty={dirty} title="Registrar venta cerrada" maxWidth="460px">
+    <Modal open={isOpen} onClose={handleClose} dirty={dirty} title="Registrar venta cerrada" maxWidth="560px">
       <div className="space-y-3">
+        <div>
+          <label className="block text-xs font-medium mb-1 text-slate-500">Productos vendidos</label>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50">
+                <tr className="text-slate-600">
+                  <th className="text-left p-2 font-medium">Descripcion</th>
+                  <th className="text-left p-2 font-medium w-14">Cant.</th>
+                  <th className="text-left p-2 font-medium w-24">P. Unit (S/)</th>
+                  <th className="text-left p-2 font-medium w-24">Subtotal</th>
+                  <th className="w-8"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((it, idx) => (
+                  <tr key={idx} className="border-t">
+                    <td className="p-1">
+                      <input
+                        type="text"
+                        value={it.descripcion}
+                        onChange={(e) => updateItem(idx, { descripcion: e.target.value })}
+                        className="text-xs w-full"
+                        placeholder="Ej: Blusa rosa M"
+                      />
+                    </td>
+                    <td className="p-1">
+                      <input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={it.cantidad}
+                        onChange={(e) => updateItem(idx, { cantidad: Number(e.target.value) })}
+                        className="text-xs w-full"
+                      />
+                    </td>
+                    <td className="p-1">
+                      <input
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        value={it.precio_unitario}
+                        onChange={(e) => updateItem(idx, { precio_unitario: Number(e.target.value) })}
+                        className="text-xs w-full"
+                      />
+                    </td>
+                    <td className="p-1">
+                      <input
+                        type="text"
+                        readOnly
+                        value={`S/ ${it.subtotal.toFixed(2)}`}
+                        className="text-xs w-full bg-slate-100"
+                        tabIndex={-1}
+                      />
+                    </td>
+                    <td className="p-1 text-center">
+                      <button
+                        type="button"
+                        onClick={() => removeItem(idx)}
+                        disabled={items.length <= 1}
+                        className="text-red-500 hover:text-red-700 disabled:text-slate-300 text-sm leading-none px-1"
+                        aria-label="Eliminar item"
+                        title="Eliminar"
+                      >
+                        x
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="p-2 border-t bg-slate-50">
+              <button
+                type="button"
+                onClick={addItem}
+                className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+              >
+                + Agregar producto
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium mb-1 text-slate-500">Monto (S/)</label>
+            <label className="block text-xs font-medium mb-1 text-slate-500">Monto total (S/)</label>
             <input
-              value={monto}
-              onChange={(e) => { setMonto(e.target.value); markDirty(); }}
-              type="number"
-              step="0.01"
-              className="text-xs"
-              placeholder="0.00"
+              value={total.toFixed(2)}
+              readOnly
+              type="text"
+              className="text-xs bg-slate-100 font-semibold"
+              tabIndex={-1}
             />
           </div>
           <div>
@@ -91,17 +227,6 @@ export const VentaCerradaModal: React.FC<Props> = ({ isOpen, onClose, remotePhon
               <option value="pos">POS</option>
             </select>
           </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-medium mb-1 text-slate-500">Productos vendidos</label>
-          <textarea
-            value={productos}
-            onChange={(e) => { setProductos(e.target.value); markDirty(); }}
-            rows={2}
-            className="text-xs"
-            placeholder="Ej: 2 blusas rosa talla M, 1 vestido negro L"
-          />
         </div>
 
         <div>

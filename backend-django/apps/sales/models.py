@@ -16,3 +16,16 @@ class VentaCerrada(models.Model):
 
     class Meta:
         db_table = 'ventas_cerradas'
+
+
+class VentaItem(models.Model):
+    venta = models.ForeignKey(VentaCerrada, on_delete=models.CASCADE, related_name='items')
+    descripcion = models.CharField(max_length=300)
+    cantidad = models.IntegerField(default=1)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+    subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'venta_items'
+        ordering = ['id']

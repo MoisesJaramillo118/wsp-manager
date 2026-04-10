@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import requests
 
 from .models import AISettings
@@ -86,4 +87,83 @@ def generate_response(message, contact_name, history=None, extra_context=''):
 
     except Exception as err:
         logger.error('[AI] Error: %s', str(err))
+        return None
+
+
+def suggest_meta_template(idea):
+    """Generate 3-5 Meta WhatsApp Business compatible template suggestions."""
+    settings = get_settings()
+    if not settings or not settings.enabled or not settings.api_key:
+        return None
+
+    provider_config = PROVIDERS.get(settings.provider)
+    if not provider_config:
+        return None
+
+    system_prompt = """Eres un experto en WhatsApp Business API y plantillas de Meta. Tu trabajo es generar plantillas de mensajes que CUMPLAN ESTRICTAMENTE las reglas de aprobacion de Meta.
+
+REGLAS DE META PARA APROBACION:
+1. Categoria correcta: MARKETING (promociones, novedades), UTILITY (notificaciones, recordatorios), AUTHENTICATION (codigos OTP)
+2. Tono profesional pero amigable
+3. NO usar mayusculas excesivas (NO escribir TODO EN MAYUSCULAS)
+4. NO usar emojis excesivos (maximo 1-2 si es necesario)
+5. NO promesas falsas ("100% garantizado", "GRATIS", "URGENTE!!!")
+6. NO links sospechosos o acortados (evitar bit.ly, tinyurl)
+7. Maximo 1024 caracteres
+8. NO usar variables de nombre personal ({{nombre}}) - las plantillas deben ser impersonales
+9. Variables permitidas: {{1}}, {{2}}, etc. para datos dinamicos como fecha, monto, codigo
+10. Lenguaje claro y directo, sin ambiguedades
+
+Responde SOLO con un JSON array de 3 a 5 sugerencias en este formato exacto:
+[
+  {
+    "nombre": "Nombre corto descriptivo",
+    "categoria": "MARKETING",
+    "contenido": "Texto de la plantilla...",
+    "explicacion": "Por que cumple las reglas de Meta"
+  },
+  ...
+]
+
+NO incluyas texto fuera del JSON. NO uses markdown. Solo el array JSON puro."""
+
+    user_prompt = f"Genera 3-5 plantillas para: {idea}"
+
+    try:
+        headers = {'Content-Type': 'application/json'}
+        if settings.provider == 'gemini':
+            headers['x-goog-api-key'] = settings.api_key
+        else:
+            headers['Authorization'] = f'Bearer {settings.api_key}'
+
+        payload = {
+            'model': settings.model or provider_config['default_model'],
+            'messages': [
+                {'role': 'system', 'content': system_prompt},
+                {'role': 'user', 'content': user_prompt},
+            ],
+            'max_tokens': 1500,
+            'temperature': 0.7,
+        }
+
+        response = requests.post(provider_config['url'], headers=headers, json=payload, timeout=60)
+        if response.status_code != 200:
+            logger.error('[AI] Template suggest HTTP %s: %s', response.status_code, response.text[:500])
+            return None
+
+        data = response.json()
+        reply = data.get('choices', [{}])[0].get('message', {}).get('content', '').strip()
+
+        # Extract JSON array from response
+        match = re.search(r'\[\s*\{.*\}\s*\]', reply, re.DOTALL)
+        if match:
+            try:
+                suggestions = json.loads(match.group(0))
+                if isinstance(suggestions, list):
+                    return suggestions[:5]
+            except json.JSONDecodeError:
+                pass
+        return None
+    except Exception as err:
+        logger.error('[AI] Template suggest error: %s', str(err))
         return None

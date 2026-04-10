@@ -10,6 +10,9 @@ export interface Advisor {
   max_chats: number;
   activo: boolean;
   chats_asignados?: number;
+  en_turno?: boolean;
+  ultimo_check_in?: string | null;
+  ultimo_check_out?: string | null;
 }
 
 // ── Conversation ──
@@ -107,14 +110,13 @@ export interface Tag {
   color: string;
 }
 
-// ── Quick Reply ──
-export interface QuickReply {
-  id: number;
-  titulo: string;
-  categoria: string;
-  contenido: string;
-  advisor_id: number | null;
-  activo: boolean;
+// ── Venta Item ──
+export interface VentaItem {
+  id?: number;
+  descripcion: string;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
 }
 
 // ── Venta Cerrada ──
@@ -131,6 +133,7 @@ export interface VentaCerrada {
   notas: string;
   origen: string;
   created_at: string;
+  items?: VentaItem[];
 }
 
 // ── Reminder ──

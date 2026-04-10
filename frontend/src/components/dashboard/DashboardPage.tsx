@@ -218,6 +218,8 @@ export const DashboardPage: React.FC = () => {
         <StatCard number={stats?.chats_activos || 0} label="Chats activos" />
         <StatCard number={stats?.sin_responder || 0} label="Sin responder" />
         <StatCard number={stats?.asignados || 0} label="Asignados" />
+        <StatCard number={stats?.total_contactos || 0} label="Total contactos" />
+        <StatCard number={`${stats?.tasa_conversion_global || 0}%`} label="Conversion %" />
       </div>
 
       {/* Chart + Ranking */}

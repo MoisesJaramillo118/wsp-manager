@@ -7,6 +7,9 @@ interface User {
   email: string;
   nombre: string;
   rol: string;
+  en_turno?: boolean;
+  ultimo_check_in?: string | null;
+  ultimo_check_out?: string | null;
 }
 
 interface AuthState {

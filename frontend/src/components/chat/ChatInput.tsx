@@ -2,7 +2,6 @@ import React, { useState, useRef, useCallback } from 'react';
 
 interface ChatInputProps {
   onSend: (message: string) => void;
-  onQuickReply: () => void;
   suggestions?: string[];
   onUseSuggestion?: (text: string) => void;
   disabled?: boolean;
@@ -10,7 +9,6 @@ interface ChatInputProps {
 
 export const ChatInput: React.FC<ChatInputProps> = ({
   onSend,
-  onQuickReply,
   suggestions = [],
   onUseSuggestion,
   disabled = false,
@@ -65,15 +63,6 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       {/* Typing indicator placeholder */}
       <div className="chat-input-area">
-        <button
-          className="btn btn-ghost btn-sm shrink-0 text-slate-400"
-          onClick={onQuickReply}
-          title="Respuestas rapidas"
-        >
-          <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-          </svg>
-        </button>
         <div className="flex-1">
           <textarea
             ref={textareaRef}

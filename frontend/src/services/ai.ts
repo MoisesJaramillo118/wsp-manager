@@ -1,6 +1,13 @@
 import api from '../config/api';
 import type { AISettings } from '../types';
 
+export interface TemplateSuggestion {
+  nombre: string;
+  categoria: string;
+  contenido: string;
+  explicacion: string;
+}
+
 export const aiService = {
   getSettings: () =>
     api.get<AISettings>('/ai/settings'),
@@ -21,4 +28,7 @@ export const aiService = {
     api.get<{ suggestions: string[] }>(
       `/ai/suggest/${encodeURIComponent(phone)}`
     ),
+
+  templateSuggest: (idea: string) =>
+    api.post<{ suggestions: TemplateSuggestion[] }>('/ai/template-suggest', { idea }),
 };

@@ -53,19 +53,3 @@ class Message(models.Model):
 
     def __str__(self):
         return f'Message {self.pk} - {self.estado}'
-
-
-class QuickReply(models.Model):
-    titulo = models.CharField(max_length=200)
-    categoria = models.CharField(max_length=50, default='general')
-    contenido = models.TextField()
-    advisor_id = models.IntegerField(null=True, blank=True)
-    activo = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'quick_replies'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return self.titulo

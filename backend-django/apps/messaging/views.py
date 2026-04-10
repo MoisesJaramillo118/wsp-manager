@@ -1,9 +1,9 @@
 import random
+import re
 import threading
 import time
 import uuid
 
-from django.db.models import Q
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.response import Response
@@ -12,15 +12,18 @@ from rest_framework.views import APIView
 from apps.connection.evolution import send_text, EvolutionAPIError
 from apps.contacts.models import Contact
 
-from .models import Message, QuickReply, Template
-from .serializers import MessageSerializer, QuickReplySerializer, TemplateSerializer
+from .models import Message, Template
+from .serializers import MessageSerializer, TemplateSerializer
 
 
 def replace_vars(text, contact):
-    """Replace {{nombre}} and {{telefono}} placeholders with contact data."""
-    result = text.replace('{{nombre}}', contact.nombre or '')
+    """Replace {{telefono}} placeholder with contact data and strip {{nombre}}."""
+    # Remove {{nombre}} if present (no longer supported)
+    result = text.replace('{{nombre}}', '')
     result = result.replace('{{telefono}}', contact.telefono or '')
-    return result
+    # Strip extra spaces introduced by removing {{nombre}}
+    result = re.sub(r' {2,}', ' ', result)
+    return result.strip()
 
 
 # ---------------------------------------------------------------------------
@@ -275,47 +278,3 @@ class SendSchedule(APIView):
             'batch_id': batch_id,
             'total': len(contact_ids),
         })
-
-
-# ---------------------------------------------------------------------------
-# Quick Replies
-# ---------------------------------------------------------------------------
-
-class QuickReplyList(APIView):
-    def get(self, request):
-        advisor_id = request.query_params.get('advisor_id')
-        qs = QuickReply.objects.filter(activo=True)
-        if advisor_id:
-            qs = qs.filter(Q(advisor_id__isnull=True) | Q(advisor_id=advisor_id))
-        serializer = QuickReplySerializer(qs, many=True)
-        return Response(serializer.data)
-
-    def post(self, request):
-        serializer = QuickReplySerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-class QuickReplyDetail(APIView):
-    def put(self, request, pk):
-        try:
-            qr = QuickReply.objects.get(pk=pk)
-        except QuickReply.DoesNotExist:
-            return Response({'error': 'Respuesta rapida no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-
-        serializer = QuickReplySerializer(qr, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def delete(self, request, pk):
-        try:
-            qr = QuickReply.objects.get(pk=pk)
-        except QuickReply.DoesNotExist:
-            return Response({'error': 'Respuesta rapida no encontrada'}, status=status.HTTP_404_NOT_FOUND)
-
-        qr.delete()
-        return Response({'success': True, 'message': 'Respuesta rapida eliminada'})

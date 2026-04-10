@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUiStore } from '../../stores/uiStore';
 import { useAuthStore } from '../../stores/authStore';
+import { turnoService } from '../../services/turno';
+import { toast } from '../ui/Toast';
 
 interface NavItem {
   id: string;
@@ -136,6 +138,44 @@ export const Sidebar: React.FC = () => {
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+
+  const [enTurno, setEnTurno] = useState<boolean>(!!user?.en_turno);
+  const [turnoLoading, setTurnoLoading] = useState(false);
+
+  useEffect(() => {
+    setEnTurno(!!user?.en_turno);
+  }, [user?.en_turno]);
+
+  const handleCheckIn = async () => {
+    if (turnoLoading) return;
+    setTurnoLoading(true);
+    try {
+      await turnoService.checkIn();
+      setEnTurno(true);
+      toast('Turno iniciado');
+      try { await fetchMe(); } catch { /* ignore */ }
+    } catch {
+      toast('Error al iniciar turno', false);
+    } finally {
+      setTurnoLoading(false);
+    }
+  };
+
+  const handleCheckOut = async () => {
+    if (turnoLoading) return;
+    setTurnoLoading(true);
+    try {
+      await turnoService.checkOut();
+      setEnTurno(false);
+      toast('Turno terminado');
+      try { await fetchMe(); } catch { /* ignore */ }
+    } catch {
+      toast('Error al terminar turno', false);
+    } finally {
+      setTurnoLoading(false);
+    }
+  };
 
   const navItems = user?.rol === 'asesor'
     ? allNavItems.filter((item) => asesorSections.includes(item.id))
@@ -212,6 +252,38 @@ export const Sidebar: React.FC = () => {
                 <polyline points="16,17 21,12 16,7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
+            </button>
+          </div>
+        )}
+        {/* Turno check-in / check-out */}
+        {user && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginTop: 8,
+          }}>
+            <span
+              style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: enTurno ? '#22c55e' : '#ef4444', flexShrink: 0,
+                boxShadow: enTurno ? '0 0 4px rgba(34,197,94,0.6)' : 'none',
+              }}
+            />
+            <div style={{ flex: 1, fontSize: 10, color: 'rgba(255,255,255,0.75)' }}>
+              {enTurno ? 'En turno' : 'Fuera'}
+            </div>
+            <button
+              onClick={enTurno ? handleCheckOut : handleCheckIn}
+              disabled={turnoLoading}
+              title={enTurno ? 'Terminar turno' : 'Iniciar turno'}
+              style={{
+                background: enTurno ? 'rgba(239,68,68,0.15)' : 'rgba(34,197,94,0.15)',
+                border: `1px solid ${enTurno ? 'rgba(239,68,68,0.4)' : 'rgba(34,197,94,0.4)'}`,
+                color: enTurno ? '#fca5a5' : '#86efac',
+                cursor: turnoLoading ? 'wait' : 'pointer',
+                padding: '3px 8px', borderRadius: 4, fontSize: 10, fontWeight: 500,
+                opacity: turnoLoading ? 0.6 : 1,
+              }}
+            >
+              {enTurno ? 'Terminar' : 'Iniciar turno'}
             </button>
           </div>
         )}

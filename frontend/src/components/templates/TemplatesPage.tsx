@@ -7,6 +7,14 @@ import { Badge } from '../ui/Badge';
 import { Skeleton } from '../ui/SkeletonLoader';
 import { toast } from '../ui/Toast';
 import { TemplateModal } from './TemplateModal';
+import { AITemplateModal } from './AITemplateModal';
+import type { TemplateSuggestion } from '../../services/ai';
+
+const META_TO_LOCAL_CATEGORY: Record<string, string> = {
+  MARKETING: 'promocion',
+  UTILITY: 'estado_pedido',
+  AUTHENTICATION: 'personalizado',
+};
 
 const CATEGORY_TABS: { label: string; value: string }[] = [
   { label: 'Todas', value: '' },
@@ -32,6 +40,8 @@ export const TemplatesPage: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [prefillData, setPrefillData] = useState<{ nombre?: string; categoria?: string; contenido?: string } | null>(null);
 
   const loadTemplates = useCallback(async () => {
     setLoading(true);
@@ -71,22 +81,39 @@ export const TemplatesPage: React.FC = () => {
 
   const handleNew = () => {
     setEditingTemplate(null);
+    setPrefillData(null);
     setModalOpen(true);
   };
 
   const handleSaved = () => {
     setModalOpen(false);
     setEditingTemplate(null);
+    setPrefillData(null);
     loadTemplates();
+  };
+
+  const handleUseAISuggestion = (s: TemplateSuggestion) => {
+    setEditingTemplate(null);
+    setPrefillData({
+      nombre: s.nombre,
+      categoria: META_TO_LOCAL_CATEGORY[s.categoria] || 'personalizado',
+      contenido: s.contenido,
+    });
+    setModalOpen(true);
   };
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <h2 className="text-xl font-semibold">Plantillas de Mensajes</h2>
-        <Button variant="primary" size="sm" onClick={handleNew}>
-          + Nueva Plantilla
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" size="sm" onClick={() => setAiModalOpen(true)}>
+            Crear con IA
+          </Button>
+          <Button variant="primary" size="sm" onClick={handleNew}>
+            + Nueva Plantilla
+          </Button>
+        </div>
       </div>
 
       {/* Category filter tabs */}
@@ -147,8 +174,15 @@ export const TemplatesPage: React.FC = () => {
       <TemplateModal
         open={modalOpen}
         template={editingTemplate}
-        onClose={() => { setModalOpen(false); setEditingTemplate(null); }}
+        prefill={prefillData}
+        onClose={() => { setModalOpen(false); setEditingTemplate(null); setPrefillData(null); }}
         onSaved={handleSaved}
+      />
+
+      <AITemplateModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+        onUseSuggestion={handleUseAISuggestion}
       />
     </div>
   );

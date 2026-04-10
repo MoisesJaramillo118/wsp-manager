@@ -9,7 +9,6 @@ import { TagsModal } from '../tags/TagsModal';
 import { ReminderModal } from '../reminders/ReminderModal';
 import { VentaCerradaModal } from '../sales/VentaCerradaModal';
 import { OrigenModal } from './OrigenModal';
-import { QuickRepliesModal } from './QuickRepliesModal';
 import { NoteModal } from './NoteModal';
 
 type ChatFilter = '' | 'sin_responder' | 'asignado' | 'resuelto';
@@ -29,7 +28,6 @@ export const ChatPage: React.FC = () => {
   const [reminderOpen, setReminderOpen] = useState(false);
   const [ventaOpen, setVentaOpen] = useState(false);
   const [origenOpen, setOrigenOpen] = useState(false);
-  const [quickReplyOpen, setQuickReplyOpen] = useState(false);
 
   const loadChats = useCallback(async () => {
     try {
@@ -109,19 +107,6 @@ export const ChatPage: React.FC = () => {
   // Conversation info for the currently selected chat
   const currentConv = chats.find((c) => c.remote_phone === currentPhone);
 
-  const handleSendQuickReply = useCallback(
-    async (content: string) => {
-      if (!currentPhone) return;
-      setQuickReplyOpen(false);
-      try {
-        await chatService.sendMessage(currentPhone, content);
-      } catch {
-        // handled inside ChatMain
-      }
-    },
-    [currentPhone]
-  );
-
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
@@ -171,7 +156,6 @@ export const ChatPage: React.FC = () => {
             phone={currentPhone}
             advisors={advisors}
             onRefreshList={handleRefreshList}
-            onOpenQuickReply={() => setQuickReplyOpen(true)}
             onOpenTags={() => setTagsOpen(true)}
             onOpenNote={() => setNoteOpen(true)}
             onOpenReminder={() => setReminderOpen(true)}
@@ -214,11 +198,6 @@ export const ChatPage: React.FC = () => {
             remotePhone={currentPhone}
             currentOrigen={currentConv?.origen}
             onSaved={() => handleRefreshList()}
-          />
-          <QuickRepliesModal
-            isOpen={quickReplyOpen}
-            onClose={() => setQuickReplyOpen(false)}
-            onSelect={handleSendQuickReply}
           />
         </>
       )}

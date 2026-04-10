@@ -6,4 +6,6 @@ urlpatterns = [
     path('settings', views.AISettingsView.as_view()),
     path('test', views.AITestView.as_view()),
     path('suggest', views.AISuggestView.as_view()),
+    path('template-suggest', views.AITemplateSuggestView.as_view()),
+    path('template-suggest/', views.AITemplateSuggestView.as_view()),
 ]

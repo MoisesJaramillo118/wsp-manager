@@ -469,7 +469,7 @@ class AutoAssignView(APIView):
                 "    (SELECT COUNT(*) FROM conversations c "
                 "     WHERE c.advisor_id = a.id AND c.status = 'asignado') AS chats_activos "
                 "  FROM advisors a "
-                "  WHERE a.activo = 1"
+                "  WHERE a.activo = 1 AND a.en_turno = 1"
                 ") sub "
                 "WHERE chats_activos < max_chats "
                 "ORDER BY chats_activos ASC "
@@ -479,7 +479,7 @@ class AutoAssignView(APIView):
 
         if not advisor:
             return Response(
-                {'error': 'No hay asesores disponibles'},
+                {'error': 'No hay vendedoras en turno disponibles'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

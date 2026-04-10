@@ -68,7 +68,6 @@ export const NAV_SECTIONS: NavSection[] = [
   { id: 'contacts', label: 'Contactos', icon: '👥', group: 'principal' },
   { id: 'templates', label: 'Plantillas', icon: '📝', group: 'contenido' },
   { id: 'catalogs', label: 'Catalogos', icon: '📁', group: 'contenido' },
-  { id: 'quick-replies', label: 'Respuestas Rapidas', icon: '⚡', group: 'contenido' },
   { id: 'messaging', label: 'Envios Masivos', icon: '📤', group: 'marketing' },
   { id: 'sales', label: 'Ventas', icon: '💰', group: 'marketing' },
   { id: 'reminders', label: 'Recordatorios', icon: '🔔', group: 'herramientas' },

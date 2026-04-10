@@ -8,4 +8,6 @@ urlpatterns = [
     path('dashboard/alerts', views.DashboardAlerts.as_view()),
     path('dashboard/advisor-performance', views.AdvisorPerformance.as_view()),
     path('dashboard/weekly-chart', views.WeeklyChart.as_view()),
+    path('dashboard/conversion-diaria', views.ConversionDiariaView.as_view()),
+    path('dashboard/conversion-diaria/', views.ConversionDiariaView.as_view()),
 ]

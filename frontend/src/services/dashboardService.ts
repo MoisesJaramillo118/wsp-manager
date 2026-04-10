@@ -36,6 +36,16 @@ export interface DashboardData {
   dinero_mes: number;
   ventas_registradas_hoy: number;
   ventas_registradas_mes: number;
+  total_ventas_cerradas: number;
+  total_chats_unicos: number;
+  tasa_conversion_global: number;
+}
+
+export interface ConversionDay {
+  fecha: string;
+  chats_nuevos: number;
+  ventas: number;
+  tasa: number;
 }
 
 export const dashboardService = {
@@ -58,4 +68,7 @@ export const dashboardService = {
     const { data } = await api.get('/dashboard/weekly-chart');
     return data;
   },
+
+  conversionDiaria: () =>
+    api.get<ConversionDay[]>('/dashboard/conversion-diaria').then((r) => r.data),
 };

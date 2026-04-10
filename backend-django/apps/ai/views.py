@@ -190,3 +190,21 @@ class AISuggestView(APIView):
         except Exception as err:
             logger.error('[AI Suggest] Error: %s', str(err))
             return Response({'suggestions': []})
+
+
+class AITemplateSuggestView(APIView):
+    def post(self, request):
+        idea = request.data.get('idea', '').strip()
+        if not idea:
+            return Response({'error': 'idea es requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .providers import suggest_meta_template
+        suggestions = suggest_meta_template(idea)
+
+        if suggestions is None:
+            return Response({
+                'error': 'No se pudo generar sugerencias. Verifica que la IA este configurada.',
+                'suggestions': []
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'suggestions': suggestions})

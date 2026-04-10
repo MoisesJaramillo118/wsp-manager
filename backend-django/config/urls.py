@@ -9,13 +9,15 @@ def health_check(request):
     return JsonResponse({'status': 'ok'})
 
 
-from apps.accounts.views import advisors_list_view, advisor_update_view, advisor_delete_view, advisor_assignments_view
+from apps.accounts.views import advisors_list_view, advisor_update_view, advisor_delete_view, advisor_assignments_view, advisors_active_view
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.accounts.urls')),
     path('api/advisors', advisors_list_view),
     path('api/advisors/', advisors_list_view),
+    path('api/advisors/active', advisors_active_view),
+    path('api/advisors/active/', advisors_active_view),
     path('api/advisors/assignments', advisor_assignments_view),
     path('api/advisors/assignments/', advisor_assignments_view),
     path('api/advisors/<int:pk>', advisor_update_view),

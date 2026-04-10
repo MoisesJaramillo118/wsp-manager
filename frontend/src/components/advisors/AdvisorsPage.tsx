@@ -162,6 +162,28 @@ export const AdvisorsPage: React.FC = () => {
                 {advisor.local_tienda && <div>Local: {advisor.local_tienda}</div>}
                 {advisor.especialidad && <div>Especialidad: {advisor.especialidad}</div>}
                 <div>{advisor.email}</div>
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: advisor.en_turno ? '#22c55e' : '#ef4444',
+                      display: 'inline-block',
+                      boxShadow: advisor.en_turno ? '0 0 4px rgba(34,197,94,0.6)' : 'none',
+                    }}
+                  />
+                  <span
+                    className={advisor.en_turno ? 'text-green-600 font-medium' : 'text-slate-400'}
+                  >
+                    {advisor.en_turno ? 'En turno' : 'Fuera de turno'}
+                  </span>
+                  {advisor.en_turno && advisor.ultimo_check_in && (
+                    <span className="text-slate-400">
+                      &middot; desde {new Date(advisor.ultimo_check_in).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Stats boxes */}

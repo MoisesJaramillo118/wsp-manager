@@ -46,7 +46,6 @@ class Command(BaseCommand):
             ('tags', self._migrate_tags),
             ('conversation_tags', self._migrate_conversation_tags),
             ('contact_tags', self._migrate_contact_tags),
-            ('quick_replies', self._migrate_quick_replies),
             ('internal_notes', self._migrate_internal_notes),
             ('reminders', self._migrate_reminders),
             ('ventas_cerradas', self._migrate_ventas),
@@ -209,16 +208,6 @@ class Command(BaseCommand):
         sql = 'INSERT OR IGNORE INTO contact_tags (id, contact_id, tag_id) VALUES (%s, %s, %s)'
         self._exec_many(sql, [(i+1, r['contact_id'], r['tag_id']) for i, r in enumerate(rows)])
 
-    def _migrate_quick_replies(self, old_cur):
-        old_cur.execute('SELECT * FROM quick_replies')
-        rows = self._to_dicts(old_cur)
-        sql = 'INSERT OR IGNORE INTO quick_replies (id, titulo, categoria, contenido, advisor_id, activo, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s)'
-        self._exec_many(sql, [
-            (r['id'], r['titulo'], r.get('categoria', 'general'), r['contenido'],
-             r.get('advisor_id'), r.get('activo', 1), r['created_at'])
-            for r in rows
-        ])
-
     def _migrate_internal_notes(self, old_cur):
         old_cur.execute('SELECT * FROM internal_notes')
         rows = self._to_dicts(old_cur)
@@ -279,7 +268,7 @@ class Command(BaseCommand):
     def _reset_sequences(self):
         """Reset SQLite autoincrement sequences after import."""
         tables = ['advisors', 'contact_groups', 'contacts', 'conversations', 'chats',
-                  'templates', 'messages', 'catalogs', 'tags', 'quick_replies',
+                  'templates', 'messages', 'catalogs', 'tags',
                   'internal_notes', 'reminders', 'ventas_cerradas']
         with connection.cursor() as cur:
             for table in tables:

@@ -46,7 +46,6 @@ interface ChatMainProps {
   phone: string | null;
   advisors: Advisor[];
   onRefreshList: () => void;
-  onOpenQuickReply: () => void;
   onOpenTags: () => void;
   onOpenNote: () => void;
   onOpenReminder: () => void;
@@ -58,7 +57,6 @@ export const ChatMain: React.FC<ChatMainProps> = ({
   phone,
   advisors,
   onRefreshList,
-  onOpenQuickReply,
   onOpenTags,
   onOpenNote,
   onOpenReminder,
@@ -407,7 +405,6 @@ export const ChatMain: React.FC<ChatMainProps> = ({
       {/* Input */}
       <ChatInput
         onSend={handleSend}
-        onQuickReply={onOpenQuickReply}
         suggestions={suggestions}
         onUseSuggestion={handleUseSuggestion}
       />

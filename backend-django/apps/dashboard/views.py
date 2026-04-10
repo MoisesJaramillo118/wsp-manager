@@ -103,6 +103,18 @@ def _fetch_stats():
         c.execute("SELECT COUNT(*) FROM ventas_cerradas WHERE strftime('%%Y-%%m',created_at) = strftime('%%Y-%%m','now')")
         ventas_registradas_mes = c.fetchone()[0] or 0
 
+        # Improved stats: global totals and conversion rate
+        c.execute("SELECT COUNT(*) FROM ventas_cerradas")
+        total_ventas_cerradas = c.fetchone()[0] or 0
+
+        c.execute("SELECT COUNT(DISTINCT remote_phone) FROM chats")
+        total_chats_unicos = c.fetchone()[0] or 0
+
+        tasa_conversion_global = (
+            round((total_ventas_cerradas / total_chats_unicos) * 100, 2)
+            if total_chats_unicos > 0 else 0
+        )
+
     return {
         'chats_activos': chats_activos,
         'sin_responder': sin_responder,
@@ -124,6 +136,9 @@ def _fetch_stats():
         'dinero_mes': dinero_mes,
         'ventas_registradas_hoy': ventas_registradas_hoy,
         'ventas_registradas_mes': ventas_registradas_mes,
+        'total_ventas_cerradas': total_ventas_cerradas,
+        'total_chats_unicos': total_chats_unicos,
+        'tasa_conversion_global': tasa_conversion_global,
     }
 
 
@@ -200,6 +215,32 @@ class AdvisorPerformance(APIView):
             """)
             advisors = _dictfetchall(c)
         return Response(advisors)
+
+
+class ConversionDiariaView(APIView):
+    def get(self, request):
+        with connection.cursor() as c:
+            c.execute("""
+                SELECT
+                    date(c.created_at) as fecha,
+                    COUNT(DISTINCT c.remote_phone) as chats_nuevos,
+                    (SELECT COUNT(*) FROM ventas_cerradas v WHERE date(v.created_at) = date(c.created_at)) as ventas
+                FROM chats c
+                WHERE c.direction = 'incoming'
+                  AND c.created_at >= date('now', '-30 days')
+                GROUP BY date(c.created_at)
+                ORDER BY fecha DESC
+            """)
+            cols = [d[0] for d in c.description]
+            results = [dict(zip(cols, row)) for row in c.fetchall()]
+
+        # Add conversion rate
+        for r in results:
+            chats = r['chats_nuevos']
+            ventas = r['ventas']
+            r['tasa'] = round((ventas / chats) * 100, 2) if chats > 0 else 0
+
+        return Response(results)
 
 
 class WeeklyChart(APIView):

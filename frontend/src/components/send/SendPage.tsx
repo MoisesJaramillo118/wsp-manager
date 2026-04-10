@@ -48,16 +48,8 @@ export const SendPage: React.FC = () => {
   };
 
   const previewText = useMemo(() => {
-    if (!message) return '';
-    let text = message;
-    if (mode === 'individual' && selectedContact) {
-      const c = contacts.find((ct) => ct.id === Number(selectedContact));
-      if (c) text = text.replace(/\{\{nombre\}\}/g, c.nombre);
-    } else {
-      text = text.replace(/\{\{nombre\}\}/g, '[Nombre]');
-    }
-    return text;
-  }, [message, mode, selectedContact, contacts]);
+    return message;
+  }, [message]);
 
   const recipientCount = useMemo(() => {
     if (mode === 'individual') return selectedContact ? 1 : 0;
@@ -215,7 +207,7 @@ export const SendPage: React.FC = () => {
               <textarea
                 rows={4}
                 className="text-xs"
-                placeholder="Escribe tu mensaje... Usa {{nombre}} para personalizar"
+                placeholder="Escribe tu mensaje..."
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
               />

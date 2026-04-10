@@ -1,30 +1,85 @@
+import json
 import os
 import random
 import string
 import time
 from datetime import date
+from decimal import Decimal
 
 from django.conf import settings as django_settings
-from django.db import connection
+from django.db import connection, transaction
 from rest_framework import status
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from core.export import export_csv
-from .models import VentaCerrada
+from .models import VentaCerrada, VentaItem
 
 
 class VentaListCreate(APIView):
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request):
         data = request.data
         remote_phone = data.get('remote_phone')
-        monto = data.get('monto')
 
-        if not remote_phone or not monto:
-            return Response({'error': 'Telefono y monto requeridos'}, status=status.HTTP_400_BAD_REQUEST)
+        if not remote_phone:
+            return Response({'error': 'Telefono requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Parse items (JSON array). When multipart, items arrive as a JSON string.
+        raw_items = data.get('items')
+        items_list = []
+        if raw_items:
+            if isinstance(raw_items, str):
+                try:
+                    items_list = json.loads(raw_items)
+                except json.JSONDecodeError:
+                    return Response(
+                        {'error': 'Formato de items invalido'},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+            elif isinstance(raw_items, list):
+                items_list = raw_items
+
+        # Normalize and filter out blank rows
+        normalized_items = []
+        for it in items_list:
+            if not isinstance(it, dict):
+                continue
+            descripcion = str(it.get('descripcion', '')).strip()
+            try:
+                cantidad = int(it.get('cantidad') or 0)
+            except (TypeError, ValueError):
+                cantidad = 0
+            try:
+                precio_unitario = Decimal(str(it.get('precio_unitario') or '0'))
+            except Exception:
+                precio_unitario = Decimal('0')
+            if not descripcion or cantidad <= 0:
+                continue
+            subtotal = (Decimal(cantidad) * precio_unitario).quantize(Decimal('0.01'))
+            normalized_items.append({
+                'descripcion': descripcion,
+                'cantidad': cantidad,
+                'precio_unitario': precio_unitario,
+                'subtotal': subtotal,
+            })
+
+        # Compute monto: if items are present, recalculate; otherwise fall back to provided monto
+        if normalized_items:
+            monto_num = float(sum((it['subtotal'] for it in normalized_items), Decimal('0')))
+        else:
+            monto_raw = data.get('monto')
+            if not monto_raw:
+                return Response(
+                    {'error': 'Monto o items requeridos'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                monto_num = float(monto_raw)
+            except (TypeError, ValueError):
+                return Response({'error': 'Monto invalido'}, status=status.HTTP_400_BAD_REQUEST)
 
         comprobante_url = ''
         if 'comprobante' in request.FILES:
@@ -48,20 +103,36 @@ class VentaListCreate(APIView):
         notas = data.get('notas', '')
         origen = data.get('origen', '')
 
-        monto_num = float(monto)
+        with transaction.atomic():
+            venta = VentaCerrada.objects.create(
+                remote_phone=remote_phone,
+                remote_name=remote_name,
+                advisor_id=int(advisor_id) if advisor_id else None,
+                advisor_nombre=advisor_nombre,
+                monto=monto_num,
+                metodo_pago=metodo_pago,
+                productos_descripcion=productos_descripcion,
+                comprobante_url=comprobante_url,
+                notas=notas,
+                origen=origen,
+            )
 
-        venta = VentaCerrada.objects.create(
-            remote_phone=remote_phone,
-            remote_name=remote_name,
-            advisor_id=int(advisor_id) if advisor_id else None,
-            advisor_nombre=advisor_nombre,
-            monto=monto_num,
-            metodo_pago=metodo_pago,
-            productos_descripcion=productos_descripcion,
-            comprobante_url=comprobante_url,
-            notas=notas,
-            origen=origen,
-        )
+            created_items = []
+            for it in normalized_items:
+                vi = VentaItem.objects.create(
+                    venta=venta,
+                    descripcion=it['descripcion'],
+                    cantidad=it['cantidad'],
+                    precio_unitario=it['precio_unitario'],
+                    subtotal=it['subtotal'],
+                )
+                created_items.append({
+                    'id': vi.id,
+                    'descripcion': vi.descripcion,
+                    'cantidad': vi.cantidad,
+                    'precio_unitario': float(vi.precio_unitario),
+                    'subtotal': float(vi.subtotal),
+                })
 
         # Update conversation outcome
         with connection.cursor() as cursor:
@@ -80,34 +151,66 @@ class VentaListCreate(APIView):
                 [remote_phone, remote_name, chat_message, 'outgoing', 0],
             )
 
-        return Response({'id': venta.id})
+        return Response({
+            'id': venta.id,
+            'remote_phone': venta.remote_phone,
+            'remote_name': venta.remote_name,
+            'advisor_id': venta.advisor_id,
+            'advisor_nombre': venta.advisor_nombre,
+            'monto': float(venta.monto),
+            'metodo_pago': venta.metodo_pago,
+            'productos_descripcion': venta.productos_descripcion,
+            'comprobante_url': venta.comprobante_url,
+            'notas': venta.notas,
+            'origen': venta.origen,
+            'created_at': venta.created_at.isoformat() if venta.created_at else None,
+            'items': created_items,
+        })
 
     def get(self, request):
         advisor_id = request.query_params.get('advisor_id')
         fecha_desde = request.query_params.get('fecha_desde')
         fecha_hasta = request.query_params.get('fecha_hasta')
 
-        sql = 'SELECT * FROM ventas_cerradas WHERE 1=1'
-        params = []
+        qs = VentaCerrada.objects.all().prefetch_related('items')
 
         if advisor_id:
-            sql += ' AND advisor_id = %s'
-            params.append(int(advisor_id))
+            qs = qs.filter(advisor_id=int(advisor_id))
         if fecha_desde:
-            sql += ' AND date(created_at) >= %s'
-            params.append(fecha_desde)
+            qs = qs.extra(where=['date(created_at) >= %s'], params=[fecha_desde])
         if fecha_hasta:
-            sql += ' AND date(created_at) <= %s'
-            params.append(fecha_hasta)
+            qs = qs.extra(where=['date(created_at) <= %s'], params=[fecha_hasta])
 
-        sql += ' ORDER BY created_at DESC LIMIT 200'
+        qs = qs.order_by('-created_at')[:200]
 
-        with connection.cursor() as cursor:
-            cursor.execute(sql, params)
-            columns = [col[0] for col in cursor.description]
-            rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        result = []
+        for venta in qs:
+            result.append({
+                'id': venta.id,
+                'remote_phone': venta.remote_phone,
+                'remote_name': venta.remote_name,
+                'advisor_id': venta.advisor_id,
+                'advisor_nombre': venta.advisor_nombre,
+                'monto': float(venta.monto),
+                'metodo_pago': venta.metodo_pago,
+                'productos_descripcion': venta.productos_descripcion,
+                'comprobante_url': venta.comprobante_url,
+                'notas': venta.notas,
+                'origen': venta.origen,
+                'created_at': venta.created_at.isoformat() if venta.created_at else None,
+                'items': [
+                    {
+                        'id': it.id,
+                        'descripcion': it.descripcion,
+                        'cantidad': it.cantidad,
+                        'precio_unitario': float(it.precio_unitario),
+                        'subtotal': float(it.subtotal),
+                    }
+                    for it in venta.items.all()
+                ],
+            })
 
-        return Response(rows)
+        return Response(result)
 
 
 class VentaStats(APIView):
@@ -176,6 +279,25 @@ class VentaStats(APIView):
                 row = cursor.fetchone()
                 chart_semanal.append({'fecha': row[0], 'c': row[1], 't': row[2]})
 
+            # Top productos
+            top_productos = []
+            try:
+                cursor.execute(
+                    "SELECT descripcion, SUM(cantidad) as total_vendido, "
+                    "SUM(subtotal) as total_revenue FROM venta_items "
+                    "GROUP BY descripcion ORDER BY total_revenue DESC LIMIT 10"
+                )
+                top_productos = [
+                    {
+                        'descripcion': row[0],
+                        'total_vendido': row[1],
+                        'total_revenue': float(row[2]) if row[2] is not None else 0.0,
+                    }
+                    for row in cursor.fetchall()
+                ]
+            except Exception:
+                top_productos = []
+
         return Response({
             'hoy': hoy,
             'semana': semana,
@@ -185,6 +307,7 @@ class VentaStats(APIView):
             'por_origen': por_origen,
             'ultimas': ultimas,
             'chart_semanal': chart_semanal,
+            'top_productos': top_productos,
         })
 
 

@@ -43,6 +43,9 @@ def _user_dict(advisor):
         'color': advisor.color,
         'especialidad': advisor.especialidad,
         'local_tienda': advisor.local_tienda,
+        'en_turno': advisor.en_turno,
+        'ultimo_check_in': advisor.ultimo_check_in.isoformat() if advisor.ultimo_check_in else None,
+        'ultimo_check_out': advisor.ultimo_check_out.isoformat() if advisor.ultimo_check_out else None,
     }
 
 
@@ -224,6 +227,58 @@ def advisor_delete_view(request, pk):
     Conversation.objects.filter(advisor_id=pk).update(advisor_id=None, status='sin_responder')
     Advisor.objects.filter(id=pk).update(activo=False)
     return Response({'success': True})
+
+
+# POST /api/auth/check-in
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def check_in_view(request):
+    from django.utils import timezone
+    from .models import AdvisorTurno
+    advisor = request.advisor
+    now = timezone.now()
+    advisor.en_turno = True
+    advisor.ultimo_check_in = now
+    advisor.save(update_fields=['en_turno', 'ultimo_check_in'])
+    AdvisorTurno.objects.create(advisor=advisor, check_in=now)
+    return Response({'success': True, 'en_turno': True, 'check_in': now.isoformat()})
+
+
+# POST /api/auth/check-out
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def check_out_view(request):
+    from django.utils import timezone
+    from .models import AdvisorTurno
+    advisor = request.advisor
+    now = timezone.now()
+    advisor.en_turno = False
+    advisor.ultimo_check_out = now
+    advisor.save(update_fields=['en_turno', 'ultimo_check_out'])
+    # Update last open turno
+    last_turno = AdvisorTurno.objects.filter(advisor=advisor, check_out__isnull=True).order_by('-check_in').first()
+    if last_turno:
+        last_turno.check_out = now
+        last_turno.duracion_minutos = int((now - last_turno.check_in).total_seconds() / 60)
+        last_turno.save()
+    return Response({'success': True, 'en_turno': False, 'check_out': now.isoformat()})
+
+
+# GET /api/advisors/active
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def advisors_active_view(request):
+    advisors = Advisor.objects.filter(activo=True, en_turno=True).order_by('nombre')
+    data = []
+    for a in advisors:
+        d = _user_dict(a)
+        d['en_turno'] = a.en_turno
+        d['ultimo_check_in'] = a.ultimo_check_in.isoformat() if a.ultimo_check_in else None
+        data.append(d)
+    return Response(data)
 
 
 # GET /api/advisors/assignments
