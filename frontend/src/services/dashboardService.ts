@@ -48,6 +48,16 @@ export interface ConversionDay {
   tasa: number;
 }
 
+export interface FunnelData {
+  chats_recibidos: number;
+  chats_asignados: number;
+  ventas_cerradas: number;
+  monto_total: number;
+  tasa_asignacion: number;
+  tasa_cierre: number;
+  ticket_promedio: number;
+}
+
 export interface AdvisorKPI {
   id: number;
   nombre: string;
@@ -63,32 +73,23 @@ export interface AdvisorKPI {
   monto_semana: number;
   ventas_mes: number;
   monto_mes: number;
-  total_atendidos: number;
+  chats_atendidos_total: number;
   chats_activos: number;
   tasa_conversion: number;
-}
-
-export interface FunnelPeriod {
-  chats: number;
-  ventas: number;
-  monto: number;
-  tasa: number;
-}
-
-export interface FunnelTotal {
-  chats_recibidos: number;
-  chats_asignados: number;
-  ventas_cerradas: number;
-  monto_total: number;
-  tasa_asignacion: number;
-  tasa_cierre: number;
+  ticket_promedio_total: number;
+  ticket_promedio_hoy: number;
+  ticket_promedio_semana: number;
+  ticket_promedio_mes: number;
 }
 
 export interface AdminKPIData {
   advisors: AdvisorKPI[];
-  funnel_total: FunnelTotal;
-  funnel_hoy: FunnelPeriod;
-  funnel_mes: FunnelPeriod;
+  funnel: {
+    hoy: FunnelData;
+    semana: FunnelData;
+    mes: FunnelData;
+    total: FunnelData;
+  };
 }
 
 export const dashboardService = {
