@@ -118,7 +118,8 @@ export const AISettingsPage: React.FC = () => {
     setTesting(true);
     try {
       const result = await aiService.test(userMsg);
-      setTestMessages((prev) => [...prev, { text: result.data.response, direction: 'in', isAI: true }]);
+      const reply = result.data.reply || result.data.response || 'Sin respuesta';
+      setTestMessages((prev) => [...prev, { text: reply, direction: 'in', isAI: true }]);
     } catch {
       setTestMessages((prev) => [...prev, { text: 'Error al probar la IA', direction: 'in', isAI: true }]);
     } finally {

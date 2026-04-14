@@ -61,7 +61,7 @@ api.interceptors.response.use(
   },
   (error) => {
     storeRef.stopLoading?.();
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
       storeRef.logout?.();
     }
     return Promise.reject(error);

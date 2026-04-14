@@ -2,8 +2,10 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+from core.secrets import load_encrypted_env
 
 load_dotenv(Path(__file__).resolve().parent.parent / '.env')
+load_encrypted_env(str(Path(__file__).resolve().parent.parent / '.env.enc'))
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -128,5 +130,5 @@ INSTANCE_NAME = os.getenv('INSTANCE_NAME', 'clemencia-brand')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL', '')
 
 # File upload limits
-DATA_UPLOAD_MAX_MEMORY_SIZE = 31457280  # 30MB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 31457280
+DATA_UPLOAD_MAX_MEMORY_SIZE = 62914560  # 60MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 62914560

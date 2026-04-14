@@ -8,7 +8,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import AISettings
-from .providers import PROVIDERS, generate_response
+from .providers import PROVIDERS, generate_response, sanitize_api_key
+from core.secrets import decrypt_value, encrypt_value
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,8 @@ class AISettingsView(APIView):
         }
 
         if settings.api_key:
-            data['api_key_masked'] = settings.api_key[:8] + '...' + settings.api_key[-4:]
+            plain_api_key = decrypt_value(settings.api_key)
+            data['api_key_masked'] = plain_api_key[:8] + '...' + plain_api_key[-4:]
             data['has_api_key'] = True
         else:
             data['api_key_masked'] = ''
@@ -59,7 +61,10 @@ class AISettingsView(APIView):
         if body.get('provider'):
             settings.provider = body['provider']
         if body.get('api_key'):
-            settings.api_key = body['api_key']
+            settings.api_key = encrypt_value(sanitize_api_key(
+                body.get('provider') or settings.provider,
+                body['api_key'],
+            ))
         if body.get('model'):
             settings.model = body['model']
         if body.get('system_prompt'):
@@ -73,11 +78,11 @@ class AISettingsView(APIView):
 
 class AITestView(APIView):
     def post(self, request):
-        message = request.data.get('message', 'Hola, tienen ropa de verano?')
+        message = request.data.get('message') or request.data.get('prompt') or 'Hola, tienen ropa de verano?'
         try:
             reply = generate_response(message, 'Cliente Test', [])
             if reply:
-                return Response({'success': True, 'reply': reply})
+                return Response({'success': True, 'reply': reply, 'response': reply})
             else:
                 return Response(
                     {'error': 'No se obtuvo respuesta. Verifica que la IA este habilitada y la API key sea correcta.'},
@@ -145,10 +150,11 @@ class AISuggestView(APIView):
             )
 
             headers = {'Content-Type': 'application/json'}
+            api_key = sanitize_api_key(ai_settings.provider, decrypt_value(ai_settings.api_key))
             if ai_settings.provider == 'gemini':
-                headers['x-goog-api-key'] = ai_settings.api_key
+                headers['x-goog-api-key'] = api_key
             else:
-                headers['Authorization'] = f'Bearer {ai_settings.api_key}'
+                headers['Authorization'] = f'Bearer {api_key}'
 
             payload = {
                 'model': ai_settings.model or 'gpt-4o-mini',

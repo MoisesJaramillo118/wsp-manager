@@ -63,10 +63,10 @@ export const CatalogModal: React.FC<CatalogModalProps> = ({
 
     const file = fileRef.current?.files?.[0];
     if (file) {
-      if (file.size > 30 * 1024 * 1024) {
-        return toast('El archivo no debe superar 30 MB', false);
+      if (file.size > 60 * 1024 * 1024) {
+        return toast('El archivo no debe superar 60 MB', false);
       }
-      formData.append('file', file);
+      formData.append('pdf', file);
     } else if (!isEdit) {
       return toast('Selecciona un archivo PDF', false);
     }
@@ -152,7 +152,7 @@ export const CatalogModal: React.FC<CatalogModalProps> = ({
               className="text-xs w-full border rounded-lg p-2 bg-slate-50"
               onChange={() => setDirty(true)}
             />
-            <p className="text-[11px] text-slate-400 mt-1">Maximo 30 MB</p>
+            <p className="text-[11px] text-slate-400 mt-1">Maximo 60 MB</p>
           </div>
         </div>
       </div>

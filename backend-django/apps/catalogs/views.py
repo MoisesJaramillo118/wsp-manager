@@ -9,6 +9,7 @@ from rest_framework.views import APIView
 
 from apps.connection.evolution import send_document, EvolutionAPIError
 from apps.contacts.models import Contact
+from core.public_urls import build_upload_url
 
 from .models import Catalog
 from .serializers import CatalogSerializer
@@ -25,7 +26,7 @@ class CatalogListCreate(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        pdf_file = request.FILES.get('pdf')
+        pdf_file = request.FILES.get('pdf') or request.FILES.get('file')
         if not pdf_file:
             return Response({'error': 'Se requiere un archivo PDF'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -33,10 +34,10 @@ class CatalogListCreate(APIView):
         if pdf_file.content_type != 'application/pdf':
             return Response({'error': 'Solo se permiten archivos PDF'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Validate max size (30MB)
-        max_size = 30 * 1024 * 1024
+        # Validate max size (60MB)
+        max_size = 60 * 1024 * 1024
         if pdf_file.size > max_size:
-            return Response({'error': 'El archivo excede el limite de 30MB'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'El archivo excede el limite de 60MB'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Generate unique filename
         unique_name = f"catalog_{int(time.time())}_{uuid.uuid4().hex[:6]}.pdf"
@@ -133,8 +134,8 @@ class CatalogSend(APIView):
             return Response({'error': 'Se requiere phone o contact_id'}, status=status.HTTP_400_BAD_REQUEST)
 
         # Build the public file URL
-        file_url = f"{settings.WEBHOOK_URL.rstrip('/')}/uploads/{catalog.filename}"
-        if not file_url.startswith('http'):
+        file_url = build_upload_url(catalog.filename)
+        if not file_url:
             # Fallback: construct from request
             file_url = request.build_absolute_uri(f"{settings.MEDIA_URL}{catalog.filename}")
 

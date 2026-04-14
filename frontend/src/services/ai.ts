@@ -21,8 +21,8 @@ export const aiService = {
     api_key: string;
   }>) => api.put('/ai/settings', data),
 
-  test: (prompt: string) =>
-    api.post<{ response: string }>('/ai/test', { prompt }),
+  test: (message: string) =>
+    api.post<{ response: string; reply: string }>('/ai/test', { message }),
 
   suggest: (phone: string) =>
     api.get<{ suggestions: string[] }>(

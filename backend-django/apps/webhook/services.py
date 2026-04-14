@@ -5,6 +5,7 @@ import unicodedata
 
 from django.db import models
 from django.utils import timezone
+from core.public_urls import build_upload_url
 
 logger = logging.getLogger(__name__)
 
@@ -76,7 +77,10 @@ def send_catalogs(catalogs_to_send, remote_phone, remote_name):
     sent = []
     for cat in catalogs_to_send:
         try:
-            file_url = f"https://buo.qolca.com/demos/whatsapp/uploads/{cat.filepath}"
+            file_url = build_upload_url(cat.filename)
+            if not file_url:
+                logger.error('[Catalog] No public URL available for "%s"', cat.nombre)
+                continue
             send_document(remote_phone, file_url, f"{cat.nombre}.pdf")
             Chat.objects.create(
                 remote_phone=remote_phone,
@@ -134,7 +138,10 @@ def process_ai_catalog_tags(ai_reply, remote_phone, remote_name):
     sent = []
     for cat in to_send:
         try:
-            file_url = f"https://buo.qolca.com/demos/whatsapp/uploads/{cat.filepath}"
+            file_url = build_upload_url(cat.filename)
+            if not file_url:
+                logger.error('[AI+Catalog] No public URL available for "%s"', cat.nombre)
+                continue
             send_document(remote_phone, file_url, f"{cat.nombre}.pdf")
             Chat.objects.create(
                 remote_phone=remote_phone,

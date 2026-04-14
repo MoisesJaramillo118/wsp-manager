@@ -4,6 +4,7 @@ import re
 import requests
 
 from .models import AISettings
+from core.secrets import decrypt_value, encrypt_value, has_master_key
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +24,38 @@ PROVIDERS = {
 }
 
 
+def sanitize_api_key(provider_name, raw_key):
+    if not raw_key:
+        return ''
+
+    value = str(raw_key).strip()
+    tokens = re.split(r'[\s"\']+', value)
+
+    if provider_name == 'openai':
+        for token in tokens:
+            if token.startswith('sk-'):
+                return token.strip()
+    elif provider_name == 'groq':
+        for token in tokens:
+            if token.startswith('gsk_'):
+                return token.strip()
+    elif provider_name == 'gemini':
+        for token in tokens:
+            if token.startswith('AIza'):
+                return token.strip()
+
+    return value
+
+
 def get_settings():
     try:
-        return AISettings.objects.get(id=1)
+        settings = AISettings.objects.get(id=1)
+        if settings.api_key and not settings.api_key.startswith('enc:') and has_master_key():
+            encrypted = encrypt_value(settings.api_key)
+            if encrypted != settings.api_key:
+                AISettings.objects.filter(id=settings.id).update(api_key=encrypted)
+                settings.api_key = encrypted
+        return settings
     except AISettings.DoesNotExist:
         return None
 
@@ -62,10 +92,15 @@ def generate_response(message, contact_name, history=None, extra_context=''):
     try:
         headers = {'Content-Type': 'application/json'}
 
+        api_key = sanitize_api_key(settings.provider, decrypt_value(settings.api_key))
+        if not api_key:
+            logger.error('[AI] API key vacia o invalida para provider=%s', settings.provider)
+            return None
+
         if settings.provider == 'gemini':
-            headers['x-goog-api-key'] = settings.api_key
+            headers['x-goog-api-key'] = api_key
         else:
-            headers['Authorization'] = f'Bearer {settings.api_key}'
+            headers['Authorization'] = f'Bearer {api_key}'
 
         payload = {
             'model': settings.model or provider['default_model'],
@@ -131,10 +166,15 @@ NO incluyas texto fuera del JSON. NO uses markdown. Solo el array JSON puro."""
 
     try:
         headers = {'Content-Type': 'application/json'}
+        api_key = sanitize_api_key(settings.provider, decrypt_value(settings.api_key))
+        if not api_key:
+            logger.error('[AI] Template suggest sin API key valida para provider=%s', settings.provider)
+            return None
+
         if settings.provider == 'gemini':
-            headers['x-goog-api-key'] = settings.api_key
+            headers['x-goog-api-key'] = api_key
         else:
-            headers['Authorization'] = f'Bearer {settings.api_key}'
+            headers['Authorization'] = f'Bearer {api_key}'
 
         payload = {
             'model': settings.model or provider_config['default_model'],
